@@ -3,16 +3,20 @@ from ConfigParser import ConfigParser
 
 from fabric.api import *
 
-config = ConfigParser()
-config.read('Config')
+manifest = ConfigParser()
+manifest.read('Manifest')
 
-service_name = config.get('Service', 'name')
-unittest_cmd = config.get('Service', 'unittest_cmd')
-accept_cmd = config.get('Service', 'accept_cmd')
-exposed_port = config.get('Service', 'exposed_port')
-registry_host_addr = config.get('Delivery', 'registry_host_addr')
-accept_host_addr = config.get('Delivery', 'accept_host_addr')
-app_host = config.get('Delivery', 'app_host')
+service_name = manifest.get('Service', 'name')
+unittest_cmd = manifest.get('Service', 'unittest_cmd')
+accept_cmd = manifest.get('Service', 'accept_cmd')
+sanity_cmd = manifest.get('Service', 'sanity_cmd')
+
+service_port = manifest.get('Service', 'service_port')
+docs_port = manifest.get('Service', 'docs_port')
+coverage_port = manifest.get('Service', 'coverage_port')
+
+registry_host_addr = 104.130.3.209:5000
+accept_host_addr = 104.130.3.209:5001
 
 REGISTRY_HOST = registry_host_addr.split(':')[0]
 REGISTRY_PORT = registry_host_addr.split(':')[1]
