@@ -3,11 +3,8 @@ maintainer jmiller@adops.com
 
 run sudo apt-get update
 
-run apt-get install -y python python-pip
-run pip install -U pip
+run apt-get install -y git
 
-run mkdir /docks
-run echo '<h1>stub docs</h1>' > docks/index.html
+add . /library
 
-workdir /docks
-cmd python -m SimpleHTTPServer
+workdir /library
