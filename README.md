@@ -19,7 +19,7 @@ on the project, and engineers consuming the library.
 The documentation should provide instructions for installing.
 It should be an automatable process.
 
-Code Coverage
+Test Coverage
 -------------
 
 Libraries should serve up a code coverage report on a port.
