@@ -1,8 +1,8 @@
 [Service]
 name=hellolib
-unittest_cmd=false
-accept_cmd=false
-sanity_cmd=false
+unittest_cmd=python test_hello.py
+accept_cmd=true
+sanity_cmd=true
 
 service_port=8000
 docs_port=8001
