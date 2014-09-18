@@ -1,5 +1,5 @@
 [Service]
-service_name=hellolib
+name=hellolib
 unittest_cmd=false
 accept_cmd=false
 sanity_cmd=false
