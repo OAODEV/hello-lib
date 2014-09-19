@@ -5,6 +5,6 @@ run sudo apt-get update
 
 run apt-get install -y git python
 
-add /lib /library
+add /hellolib /hellolib
 
-workdir /library
+workdir /hellolib
