@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name = 'hellolib',
-    packages = ['hellolib'],
+    packages = ['lib'],
     version = '0.0.1',
     description = 'a hello function',
     author = 'Jesse B Miller',
