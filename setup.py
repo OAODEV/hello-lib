@@ -4,7 +4,7 @@ setup(
     name = 'hellolib',
     packages = ['hellolib'],
     version = '0.0.1',
-    description = 'a hello function',
+    description = 'A hello function',
     author = 'Jesse B Miller',
     author_email = 'jmiller@adops.com',
     classifiers = [],
