@@ -35,6 +35,19 @@ def test(build_name=None):
     vagrant("docker run {image_name} {cmd}".format(
                 image_name=image_name, cmd=unittest_cmd))
 
+def accept(build_name=None):
+    image_name = make_image_name(build_name)
+    build(image_name)
+    vagrant("docker run -d -p 127.0.0.1:{}:{} {}".format(
+        service_port, service_port, image_name))
+    try:
+        vagrant(accept_cmd)
+    except Exception, e:
+        raise e
+    finally:
+        vagrant("docker stop `docker ps -q`")
+        vagrant("docker rm `docker ps -aq`")
+
 def integrate(build_name=None):
 
     # Merge any new mainline changes
@@ -100,4 +113,4 @@ def make_image_name(build_name):
     return image_name
 
 def vagrant(cmd):
-    local("vagrant ssh -c 'cd /vagrant && sudo {}'".format(cmd))
+    local("vagrant ssh -c 'cd /vagrant && {}'".format(cmd))
