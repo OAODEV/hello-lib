@@ -1,10 +1,10 @@
-from ubuntu
-maintainer jmiller@adops.com
+FROM ubuntu
+MAINTAINER jmiller@adops.com
 
-run sudo apt-get update
+RUN sudo apt-get update
 
-run apt-get install -y git python
+RUN apt-get install -y git python
 
-add /hellolib /hellolib
+ADD /hellolib /hellolib
 
-workdir /hellolib
+WORKDIR /hellolib
