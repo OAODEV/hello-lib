@@ -3,10 +3,6 @@ name=hellolib
 
 # run this command inside the container to test this library
 unittest_cmd=python hellolib/test_hello.py
-accept_cmd=sh accept_hellolib.sh
-
-# true returns a succesfull exit code so this test is essentially bypassed
-sanity_cmd=true
 
 service_port=9418
 docs_port=8001
