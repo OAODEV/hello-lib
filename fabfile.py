@@ -1,6 +1,4 @@
-import urllib
 from ConfigParser import ConfigParser
-
 from fabric.api import *
 
 manifest = ConfigParser()
@@ -35,19 +33,6 @@ def test(build_name=None):
     vagrant("docker run {image_name} {cmd}".format(
                 image_name=image_name, cmd=unittest_cmd))
 
-def accept(build_name=None):
-    image_name = make_image_name(build_name)
-    build(image_name)
-    vagrant("docker run -d -p 127.0.0.1:{}:{} {}".format(
-        service_port, service_port, image_name))
-    try:
-        vagrant(accept_cmd)
-    except Exception, e:
-        raise e
-    finally:
-        vagrant("docker stop `docker ps -q`")
-        vagrant("docker rm `docker ps -aq`")
-
 def integrate(build_name=None):
 
     # Merge any new mainline changes
@@ -69,13 +54,10 @@ def integrate(build_name=None):
     # trigger the build server for this image
     image_name = make_image_name(build_name)
     vagrant("docker push {image_name}".format(image_name=image_name))
-    accept_trigger = "curl localhost:{}/{}?{}".format(ACCEPT_PORT,
-                                                      urllib.quote(image_name),
-                                                      urllib.quote(accept_cmd),
-                                                      )
-    with settings(host_string=ACCEPT_HOST):
-        run(accept_trigger)
 
+    #TODO trigger acceptance testing in the Build server
+
+""" probably will move all deploy tasks out of fabric
 def deploy_local(image_name, port):
     build(image_name)
     run_image_on_port(vagrant, image_name, port)
@@ -84,6 +66,7 @@ def deploy(image_name, port):
     with settings(host_string=app_host):
         run("docker pull {image_name}".format(image_name=image_name))
         run_image_on_port(run, image_name, port)
+"""
 
 def build(image_name):
     vagrant("docker build -t {image_name} .".format(image_name=image_name))
