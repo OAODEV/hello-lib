@@ -5,5 +5,3 @@ name=hellolib
 unittest_cmd=python hellolib/test_hello.py
 
 service_port=9418
-docs_port=8001
-coverage_port=8002
