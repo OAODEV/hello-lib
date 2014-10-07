@@ -1,7 +1,4 @@
 [Service]
 name=hellolib
-
-# run this command inside the container to test this library
 unittest_cmd=python hellolib/test_hello.py
-
 service_port=9418
