@@ -1,40 +1,47 @@
+import os
+import time
+import urllib
 from ConfigParser import ConfigParser
 from fabric.api import *
 
-manifest = ConfigParser()
+env.use_ssh_config = True
+
+manifest = ConfigParser(allow_no_value=True)
 manifest.read('Manifest')
 
 service_name = manifest.get('Service', 'name')
 unittest_cmd = manifest.get('Service', 'unittest_cmd')
-# accept_cmd = manifest.get('Service', 'accept_cmd')
-# sanity_cmd = manifest.get('Service', 'sanity_cmd')
-
+accept_cmd = manifest.get('Service', 'accept_cmd')
 service_port = manifest.get('Service', 'service_port')
-# docs_port = manifest.get('Service', 'docs_port')
-# coverage_port = manifest.get('Service', 'coverage_port')
 
-registry_host_addr = '104.130.3.209:5000'
-accept_host_addr = '104.130.3.209:5001'
+registry_host_addr = 'r.iadops.com'
+build_host_addr = 'qa.iadops.com'
 
-REGISTRY_HOST = registry_host_addr.split(':')[0]
-REGISTRY_PORT = registry_host_addr.split(':')[1]
-ACCEPT_HOST = accept_host_addr.split(':')[0]
-ACCEPT_PORT = accept_host_addr.split(':')[1]
+def ssh(build_name=None):
+    """ start the container and drop the user into a shell """
+    image_name = make_image_name(build_name)
+    on_build_host("docker run -i -t {} /bin/bash".format(image_name))
 
-def up():
-    """ Bring up the local dev environment """
-    local('vagrant up')
+def test(build_name=None, command=unittest_cmd):
+    """
+    Run the unit tests in a local build
 
-def down():
-    """ Destroy the local dev environment """
-    local('vagrant destroy')
+    """
 
-def test(build_name=None):
-    """ Run the unit tests in a local build """
+    # build new images
     image_name = make_image_name(build_name)
     build(image_name)
-    vagrant("docker run {image_name} {cmd}".format(
-                image_name=image_name, cmd=unittest_cmd))
+
+    # calculate the flags for the test environment from unittest.config
+    e_flags = get_e_flags("qa.iadops.com", "unittest.conf")
+
+    # run the image with the tests
+    on_build_host("docker run {e_flags} {image_name} {cmd}".format(
+                e_flags=e_flags, image_name=image_name, cmd=command))
+
+def accept(build_name=None):
+    """ Run the accpetance tests in a local build """
+    test(command=accept_cmd)
 
 def integrate(build_name=None):
     """
@@ -47,6 +54,9 @@ def integrate(build_name=None):
     5. Push image to docker index
 
     """
+
+    # fetch remote branch references and deletes outdated remote branch names
+    local("git remote update --prune hub")
 
     # Merge any new mainline changes
     local("git pull hub mainline")
@@ -66,36 +76,113 @@ def integrate(build_name=None):
 
     # push passed image to the docker index
     image_name = make_image_name(build_name)
-    vagrant("docker push {image_name}".format(image_name=image_name))
+    on_build_host("docker push {image_name}".format(image_name=image_name))
 
-    #TODO trigger acceptance testing in the Build server
+    with settings(host_string=registry_host_addr):
+        run("curl localhost:5001/{}?{}".format(image_name,
+                                               urllib.quote(accept_cmd)))
 
-""" probably will move all deploy tasks out of fabric
-def deploy_local(image_name, port):
-    build(image_name)
-    run_image_on_port(vagrant, image_name, port)
+    if os.path.exists("./success_art.txt"):
+        with open("./success_art.txt", 'r') as art:
+            print art.read()
 
-def deploy(image_name, port):
-    with settings(host_string=app_host):
-        run("docker pull {image_name}".format(image_name=image_name))
-        run_image_on_port(run, image_name, port)
-"""
+def deploy(host, port, image_name, conf_path, release_name=''):
+    """
+    Create a release from the image and conf then run on the host
+
+    host: the url or ip of the machine to run the service on
+    port: the port on the host to bind the service to
+    image_name: the name of the docker image to deploy
+    conf_path: path to the config file for this release
+    release_name: Optional name for the release. (default is the conf filename)
+
+    """
+
+    print "* Deploying to {}:{}".format(host, port)
+
+    e_flags = get_e_flags(host, conf_path)
+
+    # if there is a release name add the appropriate flag
+    if release_name:
+        name_flag = "--name {}".format(release_name)
+    else:
+        name_flag = ''
+
+    # set up p (port) flag
+    p_flag = "-p {}:{}".format(port, service_port)
+
+    with settings(host_string=host):
+        run("docker run -d {name_flag} {p_flag} {e_flags} {image_name}".format(
+              name_flag=name_flag,
+              p_flag=p_flag,
+              e_flags=e_flags,
+              image_name=image_name
+            ))
+
+    print "* {} was run at {}:{}".format(service_name, host, port)
 
 def build(image_name):
-    """ build the Dockerfile with the given name """
-    vagrant("docker build -t {image_name} .".format(image_name=image_name))
+    """
+    build the Dockerfile with the given name
 
-def run_image_on_port(runner, image_name, port):
-    """ run the image and bind the exposed port to the given port """
-    test(image_name)
-    runner("docker run -p {port}:{docker_port} -i -t -d {image_name}".format(
-            port=port, docker_port=exposed_port, image_name=image_name))
+    Once we have environment management built into the system we will be
+    able to build services from only things that are git tracked, but for
+    now we need to build them from whatever happens to be in the current
+    repo to allow us to add configuration files to the containers we build
+
+    When all configuration is read from environment varriables and is set up
+    at runtime this can change and become more streamlined.
+
+    """
+
+    # copy current project directory to the build server
+
+    build_path = "/build/{}/{}".format(env.user, service_name)
+    on_build_host("mkdir -p {}".format(build_path))
+
+    # ignore .git folder in rsync command
+
+    local("rsync -rlvz --exclude .git -e ssh --delete ./ {}:{}".format(
+        build_host_addr, build_path))
+
+    on_build_host("docker build -t {} {}".format(
+        image_name, build_path))
+
+def clean():
+    """ remove all docker images and containers from the vagrant env """
+    on_build_host("docker rm `docker ps -aq`")
+    on_build_host("docker rmi `docker images -aq`")
+    print "Environment clean of stopped docker artifacts."
+
+def get_e_flags(host, conf_path):
+
+    # parse conf file for environment variables
+    Config = ConfigParser()
+    Config.read(conf_path)
+    config_pairs = Config.items("Conf")
+
+    # get envar dependencies from Manifest
+    envar_deps = manifest.items("Dependencies")
+
+    # find out what the host has set for the dependent variables
+    def fill_in_value_from_host(config_pair):
+        """ given a config pair, fill in the value with the host value """
+        with settings(host_string=host):
+            env_string = run("env | grep ^{}".format(
+                config_pair[0].capitalize()))
+
+        return tuple(env_string.split('='))
+
+    envar_pairs = map(fill_in_value_from_host, envar_deps)
+
+    # return string of `-e` options for docker command
+    def make_e_flag(pair):
+        return "-e {}={}".format(*pair)
+
+    return ' '.join(map(make_e_flag, config_pairs + envar_pairs))
 
 def make_image_name(build_name=''):
-    """
-    make an image name based on the given build name and current git state
-
-    """
+    """ make an image name from the build name and git state """
 
     # ensure that the name of the resulting image matches the git
     # checkout in either the commit hash or a tag
@@ -115,6 +202,7 @@ def make_image_name(build_name=''):
 
     return image_name
 
-def vagrant(cmd):
-    """ send a command to the vagrant box """
-    local("vagrant ssh -c 'cd /vagrant && {}'".format(cmd))
+def on_build_host(cmd):
+    """ send a command to the remote build machine with docker installed """
+    with settings(host_string=build_host_addr):
+        run(cmd)
