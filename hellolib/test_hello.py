@@ -8,32 +8,32 @@ class TestHelloBehavior(unittest.TestCase):
     def setUp(self):
         """ keep track of old hostname and reset it after every test """
         self.old_hostname = None
-        if 'HOSTNAME' in os.environ:
-            self.old_hostname = os.environ['HOSTNAME']
+        if 'message' in os.environ:
+            self.old_hostname = os.environ['message']
 
     def tearDown(self):
         """ reset old hostname after every test """
         if self.old_hostname:
-            os.environ['HOSTNAME'] = self.old_hostname
+            os.environ['message'] = self.old_hostname
 
-    def test_anonymous_when_no_hostname(self):
-        """ when no hostname is set, hello should be from anonymous """
+    def test_unsure_when_no_greeting(self):
+        """ when no greeting is set, should be unsure """
 
         # set up
-        os.environ['HOSTNAME'] = 'to be able to be deleted'
-        del os.environ['HOSTNAME']
+        os.environ['greeting'] = 'to be able to be deleted'
+        del os.environ['greeting']
 
         # check assumptions
-        self.assertEqual(hello(), "<h1>Hi! I'm Anonymous!</h1>")
+        self.assertEqual(hello(), "Hi! I'm not sure what to say. :(")
 
     def test_hello(self):
-        """ when hostname is set, hello shoudl be from that hostname """
+        """ when greeting is set, hello should be from that message """
 
         # set up
-        os.environ['HOSTNAME'] = "testhost"
+        os.environ['greeting'] = "testmessage"
 
         # check assumptions
-        self.assertEqual(hello(), "<h1>Hi! I'm testhost!</h1>")
+        self.assertEqual(hello(), "testmessage")
 
     def test_can_pass(self):
         self.assertTrue(True)

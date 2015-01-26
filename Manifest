@@ -1,4 +1,5 @@
 [Service]
 name=hellolib
 unittest_cmd=python hellolib/test_hello.py
+accept_cmd=true
 service_port=9418
